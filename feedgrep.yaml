@@ -1,0 +1,152 @@
+categories:
+  news:  # 新闻资讯
+    - name: 少数派
+      url: https://sspai.com/feed
+    - name: 36氪
+      url: https://www.36kr.com/feed
+    - name: Solidot
+      url: https://www.solidot.org/index.rss
+    - name: 雪球
+      url: https://xueqiu.com/hots/topic/rss
+    - name: 虎嗅
+      url: https://rss.huxiu.com/
+    - name: 极客公园
+      url: https://www.geekpark.net/rss
+    - name: IT之家
+      url: https://www.ithome.com/rss
+    - name: 凤凰网
+      url: https://rsshub.rssforever.com/ifeng/news
+    - name: 端传媒
+      url: https://rsshub.rssforever.com/theinitium/app
+    - name: 新闻联播
+      url: https://rsshub.rssforever.com/cntv/TOPC1451528971114112
+    - name: TesterHome
+      url: https://testerhome.com/topics/feed
+    - name: 联合早报
+      url: https://rsshub.rssforever.com/zaobao/znews/china
+    - name: 第一财经
+      url: https://rsshub.rssforever.com/yicai/headline
+    - name: 格隆汇
+      url: https://rsshub.rssforever.com/gelonghui/live
+    - name: 格隆汇-热门
+      url: https://rsshub.rssforever.com/gelonghui/hot-article
+    - name: 金十数据
+      url: https://rsshub.rssforever.com/jin10
+    - name: 财联社
+      url: https://rsshub.rss.zgdnz.cc/cls/hot
+    - name: 同花顺
+      url: https://rsshub.rssforever.com/10jqka/realtimenews
+    - name: 极客洞察
+      url: https://api.newshacker.me/rss
+  
+  tech:  # 科技数码
+    - name: 阮一峰
+      url: https://www.ruanyifeng.com/blog/atom.xml
+    - name: V2EX-最新
+      url: https://rsshub.rssforever.com/v2ex/topics/latest
+    - name: V2EX-最热
+      url: https://rsshub.rssforever.com/v2ex/topics/hot
+    - name: IT之家-最热
+      url: https://rsshub.rssforever.com/ithome/ranking/24h
+    - name: 开源中国
+      url: https://rsshub.rssforever.com/oschina/news
+    - name: 博客园
+      url: https://rsshub.rssforever.com/cnblogs/aggsite/topdiggs
+    - name: 掘金
+      url: https://rsshub.rssforever.com/juejin/trending/all/weekly
+    - name: Linux.do
+      url: https://rsshub.rssforever.com/telegram/channel/linux_do
+    - name: NodeSeek-TG
+      url: https://rsshub.rssforever.com/telegram/channel/nodeseekc
+    - name: Time-TG
+      url: https://rsshub.rssforever.com/telegram/channel/TimeHorizonX
+    - name: HackNews-cn
+      url: https://www.supertechfans.com/cn/index.xml
+    - name: AI新闻
+      url: https://rsshub.rssforever.com/aibase/news
+  
+  software:  # 软件应用
+    - name: 小众软件
+      url: https://www.appinn.com/feed/
+    - name: 异次元软件
+      url: https://feed.iplaysoft.com/
+    - name: 酷安-头条
+      url: https://rsshub.rssforever.com/coolapk/toutiao
+  
+  finance:  # 金融财经
+    - name: 富途牛牛
+      url: https://rsshub.rssforever.com/futunn/highlights
+    - name: 华尔街-TG
+      url: https://rsshub.rssforever.com/telegram/channel/FinanceNewsDaily
+  
+  community:  # 社区论坛
+    - name: 竹新社-TG
+      url: https://rsshub.rssforever.com/telegram/channel/tnews365
+    - name: 如有-TG
+      url: https://rsshub.rssforever.com/telegram/channel/ruyoblog
+    - name: 即刻-TG
+      url: https://rsshub.rssforever.com/telegram/channel/jike_collection
+    - name: 得到-TG
+      url: https://rsshub.rssforever.com/telegram/channel/dedao2019
+    - name: 内幕-TG
+      url: https://rsshub.rssforever.com/telegram/channel/inside1024
+    - name: 科技圈-TG
+      url: https://rsshub.umzzz.com/telegram/channel/TestFlightCN
+    - name: A姐-TG
+      url: https://rsshub.rssforever.com/telegram/channel/abskoop
+    - name: 7x24-TG
+      url: https://rsshub.rssforever.com/telegram/channel/golden_wind_news
+    - name: Lins-TG
+      url: https://rsshub.rssforever.com/telegram/channel/LinsBookA
+    - name: 互联网-TG
+      url: https://rsshub.rssforever.com/telegram/channel/https1024
+    - name: V2ray-TG
+      url: https://rsshub.rssforever.com/v2rayshare
+    - name: 风向旗-TG
+      url: https://rsshub.umzzz.com/telegram/channel/xhqcankao
+    - name: 微博热搜
+      url: https://rsshub.umzzz.com/telegram/channel/weibo_hot_times
+    - name: 值得买-TG
+      url: https://rsshub.umzzz.com/telegram/channel/zzzdm
+    - name: RSSHub-TG
+      url: https://rsshub.rssforever.com/telegram/channel/awesomeRSSHub
+  
+  product:  # 产品运营
+    - name: 产品运营
+      url: https://www.woshipm.com/category/operate/feed
+    - name: 产品经理
+      url: https://rsshub.rssforever.com/woshipm/popular
+  
+  shopping:  # 购物优惠
+    - name: 有品上新
+      url: https://rsshub.rssforever.com/xiaomiyoupin/latest
+    - name: 有品众筹
+      url: https://rsshub.rssforever.com/xiaomiyoupin/crowdfunding
+  
+  search:  # 搜索热点
+    - name: 百度热搜
+      url: https://rsshub.rssforever.com/baidu/top
+    - name: cnBeta
+      url: https://rsshub.rssforever.com/cnbeta
+  
+  test:  # 测试相关
+    - name: 软件测试吧
+      url: https://rsshub.rssforever.com/baidu/tieba/forum/%E8%BD%AF%E4%BB%B6%E6%B5%8B%E8%AF%95
+    - name: 经济50人
+      url: https://rsshub.rssforever.com/50forum
+
+  local:  # 本地生活
+    - name: 北京本地宝
+      url: https://rsshub.rssforever.com/bendibao/news/bj
+
+  infoq:  # InfoQ
+    - name: InfoQ
+      url: https://rsshub.rssforever.com/infoq/recommend
+
+  economic:  # 经济相关
+    - name: 经济-tg
+      url: https://rsshub.rssforever.com/telegram/channel/eco_cn
+    - name: 爱范儿
+      url: https://rsshub.rssforever.com/ifanr/category/%E6%97%A9%E6%8A%A5
+
+interval_minutes: 30

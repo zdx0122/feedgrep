@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FeedGrep - 阅读器</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- 引入图标库 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* 自定义滚动条样式 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* 文章内容样式修正 */
+        .article-content img { max-width: 100%; height: auto; border-radius: 0.5rem; margin: 10px 0; }
+        .article-content p { margin-bottom: 0.8em; line-height: 1.6; color: #374151; }
+        .article-content a { color: #2563eb; text-decoration: underline; }
+        .article-content blockquote { border-left: 4px solid #e5e7eb; padding-left: 1rem; color: #6b7280; font-style: italic; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 h-screen overflow-hidden">
+
+<div id="app" class="flex h-full" v-cloak>
+
+    <!-- 移动端遮罩 -->
+    <div v-if="showMobileMenu" class="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden" @click="showMobileMenu = false"></div>
+
+    <!-- 左侧侧边栏 -->
+    <aside :class="{'translate-x-0': showMobileMenu, '-translate-x-full': !showMobileMenu}" class="fixed md:relative z-30 w-64 h-full bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out md:translate-x-0 flex flex-col">
+        <!-- Logo区域 -->
+        <div class="p-6 border-b border-gray-100 flex items-center justify-between">
+            <h1 class="text-2xl font-bold text-indigo-600 flex items-center gap-2">
+                <i class="fa-solid fa-rss"></i> FeedGrep
+            </h1>
+            <button @click="showMobileMenu = false" class="md:hidden text-gray-500">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+
+        <!-- 导航菜单 -->
+        <nav class="flex-1 overflow-y-auto p-4 space-y-1">
+
+            <!-- 全部按钮 -->
+            <button
+                @click="selectCategory('')"
+                :class="currentCategory === '' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'"
+                class="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-colors group">
+                <span class="flex items-center gap-3">
+                    <i class="fa-solid fa-layer-group w-4 text-center"></i> 全部内容
+                </span>
+            </button>
+
+            <!-- 分类列表 -->
+            <div v-for="(feeds, category) in feedData" :key="category" class="space-y-1 pt-2">
+                <button
+                    @click="selectCategory(category)"
+                    :class="currentCategory === category && !currentSource ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'"
+                    class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg transition-colors uppercase tracking-wide text-xs font-bold text-gray-400 mt-4 mb-2">
+                    {{ category }}
+                </button>
+
+                <!-- 该分类下的源 -->
+                 <div class="pl-2 space-y-1">
+                    <button
+                        v-for="feed in feeds"
+                        :key="feed.url"
+                        @click="selectSource(category, feed.name)"
+                        :class="currentSource === feed.name ? 'bg-indigo-50 text-indigo-700 border-r-2 border-indigo-600' : 'text-gray-600 hover:bg-gray-50'"
+                        class="w-full flex items-center px-3 py-2 text-sm rounded-l-lg transition-colors truncate">
+                        <span class="truncate">{{ feed.name }}</span>
+                    </button>
+                 </div>
+            </div>
+        </nav>
+
+        <div class="p-4 border-t text-xs text-gray-400 text-center">
+            已订阅 {{ totalFeedsCount }} 个源
+        </div>
+    </aside>
+
+    <!-- 主内容区域 -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full">
+        <!-- 顶部栏 -->
+        <header class="bg-white h-16 border-b border-gray-200 flex items-center px-6 justify-between shadow-sm shrink-0">
+            <div class="flex items-center gap-4">
+                <button @click="showMobileMenu = true" class="md:hidden text-gray-600 hover:text-indigo-600">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+                <h2 class="text-lg font-semibold text-gray-800">
+                    <span v-if="currentSource">{{ currentSource }}</span>
+                    <span v-else-if="currentCategory" class="uppercase">{{ currentCategory }}</span>
+                    <span v-else>最新动态</span>
+                </h2>
+            </div>
+            <div class="flex items-center gap-3">
+                <button @click="refreshItems" class="p-2 text-gray-400 hover:text-indigo-600 transition-colors" title="刷新">
+                    <i class="fa-solid fa-rotate-right" :class="{'fa-spin': loading}"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- 文章列表容器 -->
+        <div id="content-scroll" class="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
+            <div class="max-w-4xl mx-auto space-y-6">
+
+                <!-- 加载状态 -->
+                <div v-if="loading && items.length === 0" class="flex justify-center py-20">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                </div>
+
+                <!-- 空状态 -->
+                <div v-if="!loading && items.length === 0" class="text-center py-20 text-gray-400">
+                    <i class="fa-regular fa-newspaper text-6xl mb-4 opacity-20"></i>
+                    <p>暂无内容</p>
+                </div>
+
+                <!-- 文章卡片 -->
+                <article v-for="item in items" :key="item.id" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-200">
+                    <div class="p-5 md:p-6">
+                        <!-- 头部信息 -->
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2 text-xs md:text-sm">
+                                <span class="px-2 py-1 bg-indigo-50 text-indigo-600 rounded-md font-medium">{{ item.source_name }}</span>
+                                <span class="text-gray-400">{{ formatDate(item.pub_date) }}</span>
+                            </div>
+                            <a :href="item.link" target="_blank" class="text-gray-400 hover:text-indigo-600">
+                                <i class="fa-solid fa-external-link-alt"></i>
+                            </a>
+                        </div>
+
+                        <!-- 标题 -->
+                        <h3 class="text-xl font-bold text-gray-900 mb-3 leading-tight cursor-pointer hover:text-indigo-600 transition-colors" @click="toggleExpand(item.id)">
+                            {{ item.title }}
+                        </h3>
+
+                        <!-- 内容预览/全文 -->
+                        <div class="relative">
+                            <!-- 默认显示摘要或被折叠的内容 -->
+                            <div v-if="expandedId !== item.id" class="text-gray-600 line-clamp-3 text-sm md:text-base">
+                                {{ stripHtml(item.description) }}
+                            </div>
+
+                            <!-- 展开后的完整HTML内容 -->
+                            <div v-else class="article-content mt-4 pt-4 border-t border-gray-100 animate-fade-in" v-html="item.description"></div>
+                        </div>
+                    </div>
+
+                    <!-- 底部操作栏 -->
+                    <div class="bg-gray-50 px-5 py-3 border-t border-gray-100 flex justify-between items-center">
+                        <button @click="toggleExpand(item.id)" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                            {{ expandedId === item.id ? '收起' : '查看详情' }}
+                            <i class="fa-solid" :class="expandedId === item.id ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                        </button>
+                        <div class="text-xs text-gray-400 uppercase font-bold tracking-wider">{{ item.category }}</div>
+                    </div>
+                </article>
+
+                <!-- 加载更多按钮 -->
+                <div v-if="items.length > 0" class="py-6 text-center">
+                    <button
+                        @click="loadMore"
+                        :disabled="loading"
+                        class="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded-full shadow-sm hover:bg-gray-50 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                        <span v-if="loading"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i> 加载中...</span>
+                        <span v-else>加载更多</span>
+                    </button>
+                </div>
+
+                <!-- 到底了提示 -->
+                <div v-if="noMoreData && items.length > 0" class="text-center text-gray-400 text-sm pb-8">
+                    - 已经到底啦 -
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    const { createApp } = Vue
+
+    createApp({
+        data() {
+            return {
+                // API 配置
+                apiBase: 'http://127.0.0.1:8000/api',
+
+                // 数据状态
+                feedData: {},
+                totalFeedsCount: 0,
+                items: [],
+
+                // 筛选状态
+                currentCategory: '',
+                currentSource: '',
+
+                // 分页状态
+                limit: 50,
+                offset: 0,
+                loading: false,
+                noMoreData: false,
+
+                // UI 状态
+                showMobileMenu: false,
+                expandedId: null // 当前展开的文章ID
+            }
+        },
+        mounted() {
+            this.fetchFeeds();
+            this.fetchItems(true);
+        },
+        methods: {
+            // 获取所有 Feed 和分类
+            async fetchFeeds() {
+                try {
+                    const res = await fetch(`${this.apiBase}/feeds`);
+                    const result = await res.json();
+                    if (result.success) {
+                        this.feedData = result.data;
+                        this.totalFeedsCount = result.count;
+                    }
+                } catch (error) {
+                    console.error('获取源列表失败:', error);
+                }
+            },
+
+            // 获取条目
+            async fetchItems(reset = false) {
+                if (this.loading) return;
+                this.loading = true;
+
+                if (reset) {
+                    this.items = [];
+                    this.offset = 0;
+                    this.noMoreData = false;
+                    // 滚动回顶部
+                    const container = document.getElementById('content-scroll');
+                    if(container) container.scrollTop = 0;
+                }
+
+                // 构建查询参数
+                const params = new URLSearchParams({
+                    limit: this.limit,
+                    offset: this.offset
+                });
+                if (this.currentCategory) params.append('category', this.currentCategory);
+                if (this.currentSource) params.append('source', this.currentSource);
+
+                try {
+                    const res = await fetch(`${this.apiBase}/items?${params.toString()}`);
+                    const result = await res.json();
+
+                    if (result.success) {
+                        const newItems = result.data;
+                        if (newItems.length < this.limit) {
+                            this.noMoreData = true;
+                        }
+
+                        if (reset) {
+                            this.items = newItems;
+                        } else {
+                            this.items = [...this.items, ...newItems];
+                        }
+
+                        this.offset += this.limit;
+                    }
+                } catch (error) {
+                    console.error('获取条目失败:', error);
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            // 切换分类
+            selectCategory(cat) {
+                this.currentCategory = cat;
+                this.currentSource = ''; // 清除具体的源
+                this.showMobileMenu = false;
+                this.fetchItems(true);
+            },
+
+            // 切换具体源
+            selectSource(cat, sourceName) {
+                this.currentCategory = cat;
+                this.currentSource = sourceName;
+                this.showMobileMenu = false;
+                this.fetchItems(true);
+            },
+
+            // 加载更多
+            loadMore() {
+                if (!this.noMoreData) {
+                    this.fetchItems(false);
+                }
+            },
+
+            // 刷新
+            refreshItems() {
+                this.fetchItems(true);
+            },
+
+            // 展开/收起文章
+            toggleExpand(id) {
+                if (this.expandedId === id) {
+                    this.expandedId = null;
+                } else {
+                    this.expandedId = id;
+                }
+            },
+
+            // 工具：格式化日期
+            formatDate(dateString) {
+                if (!dateString) return '';
+                const date = new Date(dateString);
+                // 简单判断是否为今天
+                const today = new Date();
+                const isToday = date.getDate() === today.getDate() &&
+                                date.getMonth() === today.getMonth() &&
+                                date.getFullYear() === today.getFullYear();
+
+                if (isToday) {
+                    return `今天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                }
+                return date.toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            },
+
+            // 工具：去除HTML标签用于预览
+            stripHtml(html) {
+                if (!html) return '';
+                let tmp = document.createElement("DIV");
+                tmp.innerHTML = html;
+                let text = tmp.textContent || tmp.innerText || "";
+                return text.length > 100 ? text.substring(0, 100) + '...' : text;
+            }
+        }
+    }).mount('#app')
+</script>
+</body>
+</html>

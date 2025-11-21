@@ -133,4 +133,16 @@ categories:
     - name: 有品众筹
       url: https://rsshub.rssforever.com/xiaomiyoupin/crowdfunding
 
+# 默认关键字配置
+default_keywords:
+  - 人工智能
+  - 科技
+  - 经济
+  - 金融
+  - 股票
+  - 数码
+  - 互联网
+  - 创业
+  - 投资
+
 interval_minutes: 30

@@ -48,6 +48,8 @@ class FeedGrepAPI:
         self.app.get("/api/feeds", response_model=dict)(self.get_feeds)
         self.app.get("/api/items", response_model=dict)(self.get_items)
         self.app.get("/api/categories", response_model=dict)(self.get_categories)
+        self.app.get("/api/search", response_model=dict)(self.search_items)
+        self.app.get("/api/default_keywords", response_model=dict)(self.get_default_keywords)
         self.app.get("/health", response_model=dict)(self.health_check)
     
     async def get_feeds(self):
@@ -97,10 +99,34 @@ class FeedGrepAPI:
                 }
             )
     
+    async def get_default_keywords(self):
+        """
+        获取默认关键字列表
+        
+        Returns:
+            JSON格式的默认关键字列表
+        """
+        try:
+            default_keywords = self.config.get('default_keywords', [])
+            return {
+                'success': True,
+                'data': default_keywords,
+                'count': len(default_keywords)
+            }
+        except Exception as e:
+            return JSONResponse(
+                status_code=500,
+                content={
+                    'success': False,
+                    'error': str(e)
+                }
+            )
+
     async def get_items(
         self,
         category: Optional[str] = Query(None, description="按分类筛选"),
         source: Optional[str] = Query(None, description="按来源筛选"),
+        keyword: Optional[str] = Query(None, description="关键字搜索"),
         limit: int = Query(50, ge=1, le=1000, description="返回数量限制"),
         offset: int = Query(0, ge=0, description="偏移量")
     ):
@@ -110,6 +136,7 @@ class FeedGrepAPI:
         查询参数:
             category: 分类筛选
             source: 来源筛选
+            keyword: 关键字搜索
             limit: 返回数量限制，默认50，最大1000
             offset: 偏移量，默认0
             
@@ -120,6 +147,73 @@ class FeedGrepAPI:
             # 构建查询语句
             query = "SELECT * FROM feedgrep_items WHERE 1=1"
             params = []
+            
+            if category:
+                query += " AND category = ?"
+                params.append(category)
+            
+            if source:
+                query += " AND source_name = ?"
+                params.append(source)
+                
+            if keyword:
+                query += " AND (title LIKE ? OR description LIKE ?)"
+                params.extend([f"%{keyword}%", f"%{keyword}%"])
+            
+            query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+            params.extend([limit, offset])
+            
+            # 执行查询
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row  # 使结果可以通过列名访问
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+            
+            # 获取结果
+            rows = cursor.fetchall()
+            items = [dict(row) for row in rows]
+            
+            conn.close()
+            
+            return {
+                'success': True,
+                'data': items,
+                'count': len(items)
+            }
+        except Exception as e:
+            return JSONResponse(
+                status_code=500,
+                content={
+                    'success': False,
+                    'error': str(e)
+                }
+            )
+    
+    async def search_items(
+        self,
+        keyword: str = Query(..., description="搜索关键字"),
+        category: Optional[str] = Query(None, description="按分类筛选"),
+        source: Optional[str] = Query(None, description="按来源筛选"),
+        limit: int = Query(50, ge=1, le=1000, description="返回数量限制"),
+        offset: int = Query(0, ge=0, description="偏移量")
+    ):
+        """
+        搜索RSS条目
+        
+        查询参数:
+            keyword: 搜索关键字（必填）
+            category: 分类筛选
+            source: 来源筛选
+            limit: 返回数量限制，默认50，最大1000
+            offset: 偏移量，默认0
+            
+        Returns:
+            JSON格式的RSS条目数据
+        """
+        try:
+            # 构建查询语句
+            query = "SELECT * FROM feedgrep_items WHERE (title LIKE ? OR description LIKE ?)"
+            params = [f"%{keyword}%", f"%{keyword}%"]
             
             if category:
                 query += " AND category = ?"
@@ -147,7 +241,8 @@ class FeedGrepAPI:
             return {
                 'success': True,
                 'data': items,
-                'count': len(items)
+                'count': len(items),
+                'keyword': keyword
             }
         except Exception as e:
             return JSONResponse(

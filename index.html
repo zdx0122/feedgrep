@@ -77,6 +77,22 @@
                     </button>
                  </div>
             </div>
+            
+            <!-- 默认关键字区域 -->
+            <div class="pt-6">
+                <div class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg transition-colors uppercase tracking-wide text-xs font-bold text-gray-400 mt-4 mb-2">
+                    <span>热门关键字</span>
+                </div>
+                <div class="pl-2 flex flex-wrap gap-2">
+                    <button
+                        v-for="keyword in defaultKeywords"
+                        :key="keyword"
+                        @click="searchByKeyword(keyword)"
+                        class="px-3 py-1 bg-gray-100 hover:bg-indigo-100 text-gray-700 hover:text-indigo-700 text-xs rounded-full transition-colors">
+                        {{ keyword }}
+                    </button>
+                </div>
+            </div>
         </nav>
 
         <div class="p-4 border-t text-xs text-gray-400 text-center">
@@ -99,11 +115,56 @@
                 </h2>
             </div>
             <div class="flex items-center gap-3">
+                <!-- 搜索框 -->
+                <div class="relative hidden sm:block">
+                    <input 
+                        v-model="searchKeyword"
+                        @keyup.enter="performSearch"
+                        type="text" 
+                        placeholder="搜索..." 
+                        class="pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 outline-none transition"
+                    >
+                    <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <button 
+                        v-if="searchKeyword" 
+                        @click="clearSearch"
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+                
                 <button @click="refreshItems" class="p-2 text-gray-400 hover:text-indigo-600 transition-colors" title="刷新">
                     <i class="fa-solid fa-rotate-right" :class="{'fa-spin': loading}"></i>
                 </button>
+                
+                <!-- 移动端搜索按钮 -->
+                <button @click="toggleMobileSearch" class="sm:hidden p-2 text-gray-400 hover:text-indigo-600 transition-colors">
+                    <i class="fa-solid fa-search"></i>
+                </button>
             </div>
         </header>
+        
+        <!-- 移动端搜索框 -->
+        <div v-if="showMobileSearch" class="p-4 border-b border-gray-200 bg-white sm:hidden">
+            <div class="relative">
+                <input 
+                    v-model="searchKeyword"
+                    @keyup.enter="performSearch"
+                    type="text" 
+                    placeholder="搜索..." 
+                    class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 outline-none transition"
+                >
+                <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                <button 
+                    v-if="searchKeyword" 
+                    @click="clearSearch"
+                    class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+        </div>
 
         <!-- 文章列表容器 -->
         <div id="content-scroll" class="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
@@ -192,12 +253,17 @@
 
                 // 数据状态
                 feedData: {},
+                defaultKeywords: [],
                 totalFeedsCount: 0,
                 items: [],
 
                 // 筛选状态
                 currentCategory: '',
                 currentSource: '',
+
+                // 搜索状态
+                searchKeyword: '',
+                showMobileSearch: false,
 
                 // 分页状态
                 limit: 50,
@@ -212,6 +278,7 @@
         },
         mounted() {
             this.fetchFeeds();
+            this.fetchDefaultKeywords();
             this.fetchItems(true);
         },
         methods: {
@@ -226,6 +293,19 @@
                     }
                 } catch (error) {
                     console.error('获取源列表失败:', error);
+                }
+            },
+            
+            // 获取默认关键字
+            async fetchDefaultKeywords() {
+                try {
+                    const res = await fetch(`${this.apiBase}/default_keywords`);
+                    const result = await res.json();
+                    if (result.success) {
+                        this.defaultKeywords = result.data;
+                    }
+                } catch (error) {
+                    console.error('获取默认关键字失败:', error);
                 }
             },
 
@@ -250,6 +330,7 @@
                 });
                 if (this.currentCategory) params.append('category', this.currentCategory);
                 if (this.currentSource) params.append('source', this.currentSource);
+                if (this.searchKeyword) params.append('keyword', this.searchKeyword);
 
                 try {
                     const res = await fetch(`${this.apiBase}/items?${params.toString()}`);
@@ -280,6 +361,7 @@
             selectCategory(cat) {
                 this.currentCategory = cat;
                 this.currentSource = ''; // 清除具体的源
+                this.searchKeyword = ''; // 清除搜索关键字
                 this.showMobileMenu = false;
                 this.fetchItems(true);
             },
@@ -288,7 +370,43 @@
             selectSource(cat, sourceName) {
                 this.currentCategory = cat;
                 this.currentSource = sourceName;
+                this.searchKeyword = ''; // 清除搜索关键字
                 this.showMobileMenu = false;
+                this.fetchItems(true);
+            },
+            
+            // 切换移动端搜索框显示
+            toggleMobileSearch() {
+                this.showMobileSearch = !this.showMobileSearch;
+                if (this.showMobileSearch) {
+                    // 稍微延迟一下再聚焦到输入框
+                    setTimeout(() => {
+                        const searchInput = document.querySelector('.sm\\:hidden input');
+                        if (searchInput) searchInput.focus();
+                    }, 100);
+                }
+            },
+            
+            // 执行搜索
+            performSearch() {
+                this.showMobileSearch = false;
+                this.currentCategory = '';
+                this.currentSource = '';
+                this.fetchItems(true);
+            },
+            
+            // 通过关键字搜索
+            searchByKeyword(keyword) {
+                this.searchKeyword = keyword;
+                this.currentCategory = '';
+                this.currentSource = '';
+                this.showMobileMenu = false;
+                this.fetchItems(true);
+            },
+            
+            // 清除搜索
+            clearSearch() {
+                this.searchKeyword = '';
                 this.fetchItems(true);
             },
 

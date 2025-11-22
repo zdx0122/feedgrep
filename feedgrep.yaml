@@ -135,14 +135,15 @@ categories:
 
 # 默认关键字配置
 default_keywords:
-  - 人工智能
-  - 科技
-  - 经济
-  - 金融
-  - 股票
-  - 数码
-  - 互联网
-  - 创业
-  - 投资
+  - AI
+  - 纳斯达克
+  - 标普500
+  - 恒生科技
+  - 比特币
+  - 黄金
+  - qwen
+  - deepseek
+  - gemini
+  - 花生油
 
 interval_minutes: 30

@@ -122,8 +122,8 @@
                         v-model="searchKeyword"
                         @keyup.enter="performSearch"
                         type="text" 
-                        placeholder="搜索..." 
-                        class="pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 outline-none transition"
+                        placeholder="关键词搜索 (支持 +必须词 -排除词)" 
+                        class="pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 outline-none transition w-64"
                     >
                     <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                     <button 
@@ -153,7 +153,7 @@
                     v-model="searchKeyword"
                     @keyup.enter="performSearch"
                     type="text" 
-                    placeholder="搜索..." 
+                    placeholder="关键词搜索 (支持 +必须词 -排除词)" 
                     class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 outline-none transition"
                 >
                 <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -170,6 +170,17 @@
         <!-- 文章列表容器 -->
         <div id="content-scroll" class="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
             <div class="max-w-4xl mx-auto space-y-6">
+
+                <!-- 关键词语法说明 -->
+                <details class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800 mb-4">
+                    <summary class="font-medium cursor-pointer list-none">关键词搜索语法说明 ▼</summary>
+                    <ul class="list-disc pl-5 mt-2 space-y-1">
+                        <li><strong>普通词</strong>：包含其中任意一个词就会被捕获，多个关键词使用空格分隔</li>
+                        <li><strong>必须词</strong>：必须同时包含普通词和必须词才会被捕获，使用+前缀，如：<code>+手机</code></li>
+                        <li><strong>排除词</strong>：包含过滤词的新闻会被直接排除，使用-前缀，如：<code>-水果</code></li>
+                        <li><strong>示例</strong>：<code>苹果 华为 +手机 -水果 -价格</code> 表示搜索包含"苹果"或"华为"，同时必须包含"手机"，但排除包含"水果"或"价格"的内容</li>
+                    </ul>
+                </details>
 
                 <!-- 加载状态 -->
                 <div v-if="loading && items.length === 0" class="flex justify-center py-20">

@@ -135,15 +135,22 @@ categories:
 
 # 默认关键字配置
 default_keywords:
-  - AI
-  - 纳斯达克
-  - 标普500
-  - 恒生科技
-  - 比特币
-  - 黄金
-  - qwen
-  - deepseek
-  - gemini
+  - AI 人工智能 模型 -air -gai -mail
+  - 纳斯达克 标普 道琼斯
+  - 恒生科技 恒生
+  - ETF
+  - 比特币 以太坊
+  - 黄金 白银
+  - qwen 千问 通义千问 阿里
+  - 字节 bytedance 豆包
+  - deepseek 梁文峰
+  - chatgpt openai sora
+  - gemini google 谷歌 nanobanana
+  - 马斯克 特斯拉
+  - NVIDIA 英伟达 黄仁勋
+  - 美国 日本 韩国
+  - 中国 国产
+  - 天鹅到家 家政 保洁 保姆 月嫂 家庭服务
   - 花生油
 
 interval_minutes: 30

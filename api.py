@@ -157,8 +157,42 @@ class FeedGrepAPI:
                 params.append(source)
                 
             if keyword:
-                query += " AND (title LIKE ? OR description LIKE ?)"
-                params.extend([f"%{keyword}%", f"%{keyword}%"])
+                # 解析关键词语法
+                # 普通词：包含其中任意一个词就会被捕获，多个关键词使用空格分隔
+                # 必须词：必须同时包含普通词和必须词才会被捕获，使用+分隔  
+                # 排除词：包含过滤词的新闻会被直接排除，即使包含关键词，使用-分隔
+                
+                required_keywords = []  # 必须包含的关键词 (+)
+                excluded_keywords = []  # 必须排除的关键词 (-)
+                normal_keywords = []    # 普通关键词 (空格分隔)
+                
+                # 解析关键词
+                parts = keyword.split()
+                for part in parts:
+                    if part.startswith('+'):
+                        required_keywords.append(part[1:])  # 去掉+号
+                    elif part.startswith('-'):
+                        excluded_keywords.append(part[1:])  # 去掉-号
+                    else:
+                        normal_keywords.append(part)
+                
+                # 处理普通关键词 (OR关系)
+                if normal_keywords:
+                    or_conditions = []
+                    for kw in normal_keywords:
+                        or_conditions.append("(title LIKE ? OR description LIKE ?)")
+                        params.extend([f"%{kw}%", f"%{kw}%"])
+                    query += " AND (" + " OR ".join(or_conditions) + ")"
+                
+                # 处理必须关键词 (AND关系)
+                for kw in required_keywords:
+                    query += " AND (title LIKE ? OR description LIKE ?)"
+                    params.extend([f"%{kw}%", f"%{kw}%"])
+                
+                # 处理排除关键词
+                for kw in excluded_keywords:
+                    query += " AND (title NOT LIKE ? AND description NOT LIKE ?)"
+                    params.extend([f"%{kw}%", f"%{kw}%"])
             
             query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
             params.extend([limit, offset])
@@ -211,10 +245,55 @@ class FeedGrepAPI:
             JSON格式的RSS条目数据
         """
         try:
-            # 构建查询语句
-            query = "SELECT * FROM feedgrep_items WHERE (title LIKE ? OR description LIKE ?)"
-            params = [f"%{keyword}%", f"%{keyword}%"]
+            # 解析关键词语法
+            # 普通词：包含其中任意一个词就会被捕获，多个关键词使用空格分隔
+            # 必须词：必须同时包含普通词和必须词才会被捕获，使用+分隔  
+            # 排除词：包含过滤词的新闻会被直接排除，即使包含关键词，使用-分隔
             
+            required_keywords = []  # 必须包含的关键词 (+)
+            excluded_keywords = []  # 必须排除的关键词 (-)
+            normal_keywords = []    # 普通关键词 (空格分隔)
+            
+            # 解析关键词
+            parts = keyword.split()
+            for part in parts:
+                if part.startswith('+'):
+                    required_keywords.append(part[1:])  # 去掉+号
+                elif part.startswith('-'):
+                    excluded_keywords.append(part[1:])  # 去掉-号
+                else:
+                    normal_keywords.append(part)
+            
+            # 构建查询语句
+            query_conditions = []
+            params = []
+            
+            # 处理普通关键词 (OR关系)
+            if normal_keywords:
+                or_conditions = []
+                for kw in normal_keywords:
+                    or_conditions.append("(title LIKE ? OR description LIKE ?)")
+                    params.extend([f"%{kw}%", f"%{kw}%"])
+                query_conditions.append("(" + " OR ".join(or_conditions) + ")")
+            
+            # 处理必须关键词 (AND关系)
+            for kw in required_keywords:
+                query_conditions.append("(title LIKE ? OR description LIKE ?)")
+                params.extend([f"%{kw}%", f"%{kw}%"])
+            
+            # 处理排除关键词
+            for kw in excluded_keywords:
+                query_conditions.append("(title NOT LIKE ? AND description NOT LIKE ?)")
+                params.extend([f"%{kw}%", f"%{kw}%"])
+            
+            # 基础查询
+            query = "SELECT * FROM feedgrep_items WHERE "
+            if query_conditions:
+                query += " AND ".join(query_conditions)
+            else:
+                query += "1=1"  # 没有条件时的占位符
+            
+            # 添加分类和来源筛选条件
             if category:
                 query += " AND category = ?"
                 params.append(category)

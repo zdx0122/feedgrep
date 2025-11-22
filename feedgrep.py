@@ -1,13 +1,11 @@
 import yaml
 import sqlite3
-import hashlib
 import schedule
 import time
 import feedparser
 import argparse
 import sys
 import threading
-from datetime import datetime
 from typing import List, Dict
 from utils.Logger import get_logger
 

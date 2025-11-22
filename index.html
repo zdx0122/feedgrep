@@ -22,6 +22,49 @@
         .article-content p { margin-bottom: 0.8em; line-height: 1.6; color: #374151; }
         .article-content a { color: #2563eb; text-decoration: underline; }
         .article-content blockquote { border-left: 4px solid #e5e7eb; padding-left: 1rem; color: #6b7280; font-style: italic; }
+        
+        /* 自定义tooltip样式 */
+        .keyword-tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .keyword-tooltip .tooltip-text {
+            visibility: hidden;
+            background-color: #1e293b;
+            color: #f8fafc;
+            text-align: center;
+            border-radius: 4px;
+            padding: 5px 10px;
+            position: absolute;
+            z-index: 100;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            white-space: nowrap;
+            font-size: 0.75rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* 左侧边界处理 - 对于容器边缘的元素 */
+        .keyword-tooltip.left-edge .tooltip-text {
+            left: 0;
+            transform: none;
+        }
+        
+        /* 右侧边界处理 - 对于容器边缘的元素 */
+        .keyword-tooltip.right-edge .tooltip-text {
+            left: auto;
+            right: 0;
+            transform: none;
+        }
+        
+        .keyword-tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 h-screen overflow-hidden">
@@ -52,13 +95,19 @@
                     <span>自定义关键词</span>
                 </div>
                 <div class="pl-2 flex flex-wrap gap-2">
-                    <button
-                        v-for="keyword in defaultKeywords"
+                    <div 
+                        v-for="(keyword, index) in defaultKeywords"
                         :key="keyword"
-                        @click="searchByKeyword(keyword)"
-                        class="px-3 py-1 bg-gray-100 hover:bg-indigo-100 text-gray-700 hover:text-indigo-700 text-xs rounded-full transition-colors">
-                        {{ keyword }}
-                    </button>
+                        class="keyword-tooltip"
+                        :class="getKeywordTooltipClass(index)"
+                    >
+                        <button
+                            @click="searchByKeyword(keyword)"
+                            class="px-3 py-1 bg-gray-100 hover:bg-indigo-100 text-gray-700 hover:text-indigo-700 text-xs rounded-full transition-colors">
+                            {{ getFirstWord(keyword) }}
+                        </button>
+                        <span class="tooltip-text">{{ keyword }}</span>
+                    </div>
                 </div>
             </div>
 
@@ -466,6 +515,27 @@
                 tmp.innerHTML = html;
                 let text = tmp.textContent || tmp.innerText || "";
                 return text.length > 100 ? text.substring(0, 100) + '...' : text;
+            },
+            
+            // 获取关键词的第一个词
+            getFirstWord(keyword) {
+                if (!keyword) return '';
+                // 按空格分割并返回第一个词
+                return keyword.split(' ')[0];
+            },
+            
+            // 获取关键词tooltip的类名
+            getKeywordTooltipClass(index) {
+                const classes = [];
+                // 第一个元素添加左边缘类
+                if (index === 0) {
+                    classes.push('left-edge');
+                }
+                // 最后一个元素添加右边缘类
+                if (index === this.defaultKeywords.length - 1) {
+                    classes.push('right-edge');
+                }
+                return classes.join(' ');
             }
         }
     }).mount('#app')

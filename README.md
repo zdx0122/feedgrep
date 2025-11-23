@@ -57,6 +57,23 @@ python feedgrep.py
 
 启动后可以通过浏览器访问 `http://localhost:8000` 查看Web界面。
 
+## 服务管理
+
+### Bash 脚本方式 (推荐)
+
+项目提供了一个统一的 Bash 脚本来管理服务：
+
+```bash
+# 启动服务
+./feedgrep.sh start
+
+# 停止服务
+./feedgrep.sh stop
+
+# 重启服务
+./feedgrep.sh restart
+```
+
 ## 数据存储
 
 RSS条目被存储在本地的SQLite数据库 `feedgrep.db` 中，每条记录都会标记其所属的分类和来源名称。

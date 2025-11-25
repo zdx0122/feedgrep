@@ -127,7 +127,7 @@ class FeedGrepAPI:
         category: Optional[str] = Query(None, description="按分类筛选"),
         source: Optional[str] = Query(None, description="按来源筛选"),
         keyword: Optional[str] = Query(None, description="关键字搜索"),
-        limit: int = Query(50, ge=1, le=1000, description="返回数量限制"),
+        limit: int = Query(10, ge=1, le=1000, description="返回数量限制"),
         offset: int = Query(0, ge=0, description="偏移量")
     ):
         """

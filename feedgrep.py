@@ -29,6 +29,13 @@ class FeedGrepProcessor:
         # 初始化数据库
         self.db_path = db_path
         self.init_database()
+        
+        # 初始化推送管理器
+        from push import PushManager
+        self.push_manager = PushManager(self.config)
+        
+        # 存储每个源的新条目用于推送
+        self.feed_new_items = {}
     
     def init_database(self):
         """初始化数据库表"""
@@ -153,6 +160,12 @@ class FeedGrepProcessor:
             conn.close()
             
             log.info(f"[{category} - {source_name}] Saved new item: {item['title']}")
+            
+            # 记录新条目用于推送
+            if source_name not in self.feed_new_items:
+                self.feed_new_items[source_name] = []
+            self.feed_new_items[source_name].append(item)
+            
             return True
         except sqlite3.IntegrityError:
             # 可能是唯一约束冲突（并发情况下）
@@ -179,10 +192,38 @@ class FeedGrepProcessor:
                 new_items_count += 1
         
         log.info(f"Feed {source_name} processed. {new_items_count} new items saved.")
+        
+        # 推送RSS源的新内容
+        feed_config_list = self.config.get('categories', {}).get(category, [])
+        feed_config = None
+        for fc in feed_config_list:
+            if fc.get('name') == source_name:
+                feed_config = fc
+                break
+                
+        if feed_config and new_items_count > 0:
+            push_channels = feed_config.get('push_channels', [])
+            if push_channels:
+                title = f"[FeedGrep] {source_name} 有 {new_items_count} 条新内容\n"
+                content = ""
+                
+                for i, item in enumerate(self.feed_new_items.get(source_name, []), 1):
+                    # 添加序号和超链接到内容
+                    content += f"\n{i}. [{item['title']}]({item['link']})\n"
+                    
+                    # 限制总内容长度
+                    if len(content) > 1500:
+                        content += f"\n... 还有更多内容（共{new_items_count}条）"
+                        break
+                        
+                self.push_manager.send_bulk_push(push_channels, title, content)
     
     def process_all_feeds(self):
         """处理所有配置的RSS源"""
         log.info("Starting to process all feeds...")
+        
+        # 清空之前的新条目记录
+        self.feed_new_items = {}
         
         # 处理分类的RSS源
         categories = self.config.get('categories', {})
@@ -196,7 +237,129 @@ class FeedGrepProcessor:
                     except Exception as e:
                         log.error(f"Failed to process feed {source_name} ({url}): {e}")
         
+        # 处理关键词推送
+        self.process_keyword_pushes()
+        
         log.info("All feeds processed.")
+
+    def process_keyword_pushes(self):
+        """处理基于关键词的推送"""
+        if not self.push_manager.push_enabled:
+            return
+            
+        # 获取默认关键词配置
+        default_keywords = self.config.get('default_keywords', [])
+        
+        # 遍历每个关键词配置
+        for i, keyword_config in enumerate(default_keywords):
+            # 检查是否有针对此关键词的推送配置
+            keyword_push_config = None
+            if isinstance(keyword_config, dict):
+                keyword_push_config = keyword_config
+                keyword_expr = keyword_config.get('keywords', '')
+            else:
+                keyword_expr = keyword_config
+                
+            # 如果没有推送配置，跳过
+            if isinstance(keyword_push_config, dict) and 'push_channels' not in keyword_push_config:
+                continue
+                
+            push_channels = keyword_push_config.get('push_channels', []) if isinstance(keyword_push_config, dict) else []
+            if not push_channels:
+                continue
+            
+            # 搜索匹配该关键词的内容
+            matched_items = self.search_items_by_keyword(keyword_expr)
+            
+            # 如果有匹配的内容，则发送推送
+            if matched_items:
+                # 构造推送标题和内容
+                first_keyword = keyword_expr.split()[0]  # 取第一个关键词作为标题的一部分
+                title = f"[FeedGrep关键词] {first_keyword} 有 {len(matched_items)} 条新内容"
+                
+                content = ""
+
+                for i, item in enumerate(matched_items[:10], 1):  # 限制最多10条
+                    # 添加序号、来源和超链接到内容
+                    content += f"\n{i}. [{item['source_name']}] [{item['title']}]({item['link']})\n"
+                    
+                if len(matched_items) > 10:
+                    content += f"\n... 还有 {len(matched_items) - 10} 条内容"
+                    
+                # 发送推送
+                self.push_manager.send_bulk_push(push_channels, title, content)
+
+    def search_items_by_keyword(self, keyword):
+        """
+        根据关键词搜索新条目
+        
+        Args:
+            keyword: 关键词表达式
+            
+        Returns:
+            匹配的条目列表
+        """
+        try:
+            # 解析关键词语法
+            required_keywords = []  # 必须包含的关键词 (+)
+            excluded_keywords = []  # 必须排除的关键词 (-)
+            normal_keywords = []    # 普通关键词 (空格分隔)
+            
+            # 解析关键词
+            parts = keyword.split()
+            for part in parts:
+                if part.startswith('+'):
+                    required_keywords.append(part[1:])  # 去掉+号
+                elif part.startswith('-'):
+                    excluded_keywords.append(part[1:])  # 去掉-号
+                else:
+                    normal_keywords.append(part)
+            
+            # 获取爬取频率作为时间范围
+            interval_minutes = self.config.get('interval_minutes', 30)
+            
+            # 构建查询语句
+            query_conditions = [f"created_at >= datetime('now', '-{interval_minutes} minutes')"]  # 只查找最近几次爬取周期内的新内容
+            params = []
+            
+            # 处理普通关键词 (OR关系)
+            if normal_keywords:
+                or_conditions = []
+                for kw in normal_keywords:
+                    or_conditions.append("(title LIKE ? OR description LIKE ?)")
+                    params.extend([f"%{kw}%", f"%{kw}%"])
+                query_conditions.append("(" + " OR ".join(or_conditions) + ")")
+            
+            # 处理必须关键词 (AND关系)
+            for kw in required_keywords:
+                query_conditions.append("(title LIKE ? OR description LIKE ?)")
+                params.extend([f"%{kw}%", f"%{kw}%"])
+            
+            # 处理排除关键词
+            for kw in excluded_keywords:
+                query_conditions.append("(title NOT LIKE ? AND description NOT LIKE ?)")
+                params.extend([f"%{kw}%", f"%{kw}%"])
+            
+            # 基础查询
+            query = "SELECT * FROM feedgrep_items WHERE " + " AND ".join(query_conditions)
+            query += " ORDER BY created_at DESC"
+            
+            # 执行查询
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row  # 使结果可以通过列名访问
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+            
+            # 获取结果
+            rows = cursor.fetchall()
+            items = [dict(row) for row in rows]
+            
+            conn.close()
+            
+            return items
+        except Exception as e:
+            log.error(f"搜索关键词 '{keyword}' 时出错: {e}")
+            return []
     
     def start_scheduler(self):
         """启动定时调度器"""

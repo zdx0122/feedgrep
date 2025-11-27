@@ -1,9 +1,19 @@
 categories:
   news:  # 新闻资讯
     - name: 竹新社-TG
-      url: https://rsshub.rssforever.com/telegram/channel/tnews365
+      url: https://rsshub.umzzz.com/telegram/channel/tnews365
+      push_channels:
+        - webhook_feishu
+        - webhook_weixin
+        - qywx-bot-test
+        - telegram-bot
     - name: 微博热搜
       url: https://rsshub.umzzz.com/telegram/channel/weibo_hot_times
+      push_channels:
+        - webhook_feishu
+        - webhook_weixin
+        - qywx-bot-test
+        - telegram-bot
     - name: 百度热搜
       url: https://rsshub.rssforever.com/baidu/top
     - name: 36氪
@@ -24,6 +34,11 @@ categories:
       url: https://www.ruanyifeng.com/blog/atom.xml
     - name: 科技圈-TG
       url: https://rsshub.umzzz.com/telegram/channel/TestFlightCN
+      push_channels:
+        - webhook_feishu
+        - webhook_weixin
+        - qywx-bot-test
+        - telegram-bot
     - name: AI新闻
       url: https://rsshub.rssforever.com/aibase/news
     - name: 极客洞察
@@ -136,6 +151,13 @@ categories:
   shopping:  # 购物优惠
     - name: 真正值得买-TG
       url: https://rsshub.umzzz.com/telegram/channel/zzzdm
+    - name: RackNerd官方促销信息️-TG
+      url: https://rsshub.umzzz.com/telegram/channel/racknerd_promo
+      push_channels:
+        - webhook_feishu
+        - webhook_weixin
+        - qywx-bot-test
+        - telegram-bot
 #    - name: 有品上新
 #      url: https://rsshub.rssforever.com/xiaomiyoupin/latest
 #    - name: 有品众筹
@@ -150,24 +172,81 @@ categories:
 
 
 # 默认关键字配置
+#语法说明：
+  #普通词：包含其中任意一个词就会被捕获，多个关键词使用空格分隔
+  #必须词：必须同时包含普通词和必须词才会被捕获，使用+前缀，如：+手机
+  #排除词：包含过滤词的新闻会被直接排除，使用-前缀，如：-水果
+  #示例：苹果 华为 +手机 -水果 -价格 表示搜索包含"苹果"或"华为"，同时必须包含"手机"，但排除包含"水果"或"价格"的内容
 default_keywords:
-  - AI 人工智能 +模型 -air -gai -mail
-  - 纳斯达克 标普 道琼斯
-  - 恒生科技 恒生
-  - ETF
-  - 比特币 以太坊
-  - 黄金 白银
-  - qwen 千问 通义千问 阿里
-  - 字节 bytedance 豆包
-  - deepseek 梁文峰
-  - chatgpt openai sora
-  - gemini google 谷歌 nanobanana
-  - 马斯克 特斯拉
-  - NVIDIA 英伟达 黄仁勋
-  - 美国 日本 韩国
-  - 中国 国产
-  - 月嫂 家政 保洁 保姆 家庭服务
-  - 花生油
+  - keywords: AI 人工智能 +模型 -air -gai -mail
+  - keywords: 纳斯达克 标普 道琼斯
+    push_channels:
+      - webhook_feishu
+      - webhook_weixin
+      - qywx-bot-test
+      - telegram-bot
+  - keywords: 恒生科技 恒生
+    push_channels:
+      - webhook_feishu
+      - webhook_weixin
+      - qywx-bot-test
+      - telegram-bot
+  - keywords: ETF
+  - keywords: 比特币 以太坊
+    push_channels:
+      - webhook_feishu
+      - webhook_weixin
+      - qywx-bot-test
+      - telegram-bot
+  - keywords: 黄金 白银
+  - keywords: qwen 千问 通义千问 阿里
+  - keywords: 字节 bytedance 豆包
+  - keywords: deepseek 梁文峰
+  - keywords: chatgpt openai sora
+  - keywords: gemini google 谷歌 nanobanana
+  - keywords: 马斯克 特斯拉
+  - keywords: NVIDIA 英伟达 黄仁勋
+  - keywords: 美国 日本 韩国
+  - keywords: 中国 国产
+  - keywords: 月嫂 家政 保洁 保姆 家庭服务
+  - keywords: 花生油
 
 # 定时抓取RSS源的频率，单位：分钟
 interval_minutes: 30
+
+# 推送配置
+push:
+  # 推送总开关
+  enabled: true
+  
+  # 推送时间范围控制开关
+  time_restriction_enabled: true
+  
+  # 推送时间范围（24小时制，北京时间）
+  time_start: "08:00"  # 早上8点
+  time_end: "22:00"    # 晚上10点
+  
+  # 推送渠道配置
+  webhooks:
+    # 飞书群
+    webhook_feishu:
+      type: feishu
+      url: https://open.feishu.cn/open-apis/bot/v2/hook/824c268a-fb75-4f48-a0be-3bea0d8af708
+    
+    # 个人微信
+    webhook_weixin:
+      type: wework
+      wework_msg_type: text
+      url: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=cbbad3eb-971a-4b9e-acfb-7838e8d748ac
+
+    # 企业微信群
+    qywx-bot-test:
+      type: wework
+      wework_msg_type: markdown
+      url: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=8d2d04fc-aa85-4bec-b5c8-b68529d4e99a
+
+    # Telegram
+    telegram-bot:
+      type: telegram
+      bot_token: 8255169196:AAFK-QOQG37jlbbyPf5USJbrnFxbiIBpxMc
+      chat_id: 701992422

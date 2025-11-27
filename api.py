@@ -108,10 +108,20 @@ class FeedGrepAPI:
         """
         try:
             default_keywords = self.config.get('default_keywords', [])
+            # 处理新的关键词格式，提取关键词表达式
+            processed_keywords = []
+            for keyword_config in default_keywords:
+                if isinstance(keyword_config, dict):
+                    # 新格式：包含 keywords 和 push_channels 字段的对象
+                    processed_keywords.append(keyword_config['keywords'])
+                else:
+                    # 旧格式：直接是关键词字符串
+                    processed_keywords.append(keyword_config)
+            
             return {
                 'success': True,
-                'data': default_keywords,
-                'count': len(default_keywords)
+                'data': processed_keywords,
+                'count': len(processed_keywords)
             }
         except Exception as e:
             return JSONResponse(

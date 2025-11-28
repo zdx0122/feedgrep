@@ -217,6 +217,11 @@ push:
     webhook_feishu:
       type: feishu
       url: https://open.feishu.cn/open-apis/bot/v2/hook/xxxxx-xx-xx-xx-xxx
+
+    # 飞书群，同一渠道可以配置多个机器人，在rss渠道或者关键词配置中添加上即可
+    webhook_feishu_2:
+      type: feishu
+      url: https://open.feishu.cn/open-apis/bot/v2/hook/xxxxx-xx-xx-xx-xxx
     
     # 个人微信
     webhook_weixin:
@@ -235,6 +240,7 @@ push:
       type: telegram
       bot_token: YOUR_BOT_TOKEN
       chat_id: YOUR_CHAT_ID
+
     # 邮件推送
     email_notices:
       type: email

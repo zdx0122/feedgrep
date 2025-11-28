@@ -100,28 +100,48 @@ class FeedGrepProcessor:
             log.error(f"Error fetching RSS feed from {url}: {e}")
             return []
     
-    def is_item_exists(self, guid: str, link: str) -> bool:
+    def is_item_exists(self, guid: str, link: str, title: str, source_name: str) -> bool:
         """
         检查条目是否已存在
         
         Args:
             guid: 条目的GUID
             link: 条目的链接
+            title: 条目的标题
+            source_name: 条目来源名称
             
         Returns:
             如果条目已存在返回True，否则返回False
         """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute(
-            'SELECT COUNT(*) FROM feedgrep_items WHERE guid = ? OR link = ?', 
-            (guid, link)
-        )
-        count = cursor.fetchone()[0]
-        
-        conn.close()
-        return count > 0
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                conn = sqlite3.connect(self.db_path, timeout=20.0)
+                cursor = conn.cursor()
+                
+                cursor.execute(
+                    'SELECT COUNT(*) FROM feedgrep_items WHERE source_name = ? AND title = ? AND (link = ? OR guid = ?)',
+                    (source_name, title, link, guid)
+                )
+                count = cursor.fetchone()[0]
+                
+                conn.close()
+                return count > 0
+            except sqlite3.OperationalError as e:
+                if "database is locked" in str(e) and attempt < max_retries - 1:
+                    time.sleep(1)
+                    continue
+                else:
+                    log.error(f"Error checking item existence after {attempt+1} attempts: {e}")
+                    if 'conn' in locals():
+                        conn.close()
+                    return False
+            except Exception as e:
+                log.error(f"Unexpected error checking item existence: {e}")
+                if 'conn' in locals():
+                    conn.close()
+                return False
+        return False
     
     def save_item(self, item: Dict, category: str, source_name: str) -> bool:
         """
@@ -136,43 +156,59 @@ class FeedGrepProcessor:
             保存成功返回True，否则返回False
         """
         # 检查条目是否已存在
-        if self.is_item_exists(item['guid'], item['link']):
+        if self.is_item_exists(item['guid'], item['link'], item['title'], source_name):
             return False  # 条目已存在，不需要保存
         
-        try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                INSERT INTO feedgrep_items (title, link, description, pub_date, guid, category, source_name)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                item['title'],
-                item['link'],
-                item['description'],
-                item['pub_date'],
-                item['guid'],
-                category,
-                source_name
-            ))
-            
-            conn.commit()
-            conn.close()
-            
-            log.info(f"[{category} - {source_name}] Saved new item: {item['title']}")
-            
-            # 记录新条目用于推送
-            if source_name not in self.feed_new_items:
-                self.feed_new_items[source_name] = []
-            self.feed_new_items[source_name].append(item)
-            
-            return True
-        except sqlite3.IntegrityError:
-            # 可能是唯一约束冲突（并发情况下）
-            return False
-        except Exception as e:
-            log.error(f"Error saving item: {e}")
-            return False
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                conn = sqlite3.connect(self.db_path, timeout=20.0)
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    INSERT INTO feedgrep_items (title, link, description, pub_date, guid, category, source_name)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    item['title'],
+                    item['link'],
+                    item['description'],
+                    item['pub_date'],
+                    item['guid'],
+                    category,
+                    source_name
+                ))
+                
+                conn.commit()
+                conn.close()
+                
+                log.info(f"[{category} - {source_name}] Saved new item: {item['title']}")
+                
+                # 记录新条目用于推送
+                if source_name not in self.feed_new_items:
+                    self.feed_new_items[source_name] = []
+                self.feed_new_items[source_name].append(item)
+                
+                return True
+            except sqlite3.OperationalError as e:
+                if "database is locked" in str(e) and attempt < max_retries - 1:
+                    time.sleep(1)
+                    continue
+                else:
+                    log.error(f"Error saving item after {attempt+1} attempts: {e}")
+                    if 'conn' in locals():
+                        conn.close()
+                    return False
+            except sqlite3.IntegrityError:
+                # 可能是唯一约束冲突（并发情况下）
+                if 'conn' in locals():
+                    conn.close()
+                return False
+            except Exception as e:
+                log.error(f"Unexpected error saving item: {e}")
+                if 'conn' in locals():
+                    conn.close()
+                return False
+        return False
     
     def process_feed(self, url: str, category: str, source_name: str):
         """

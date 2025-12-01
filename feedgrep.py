@@ -30,6 +30,9 @@ class FeedGrepProcessor:
         self.db_path = db_path
         self.init_database()
         
+        # 初始化批处理ID
+        self.current_batch_id = self.get_next_batch_id()
+        
         # 初始化推送管理器
         from push import PushManager
         self.push_manager = PushManager(self.config)
@@ -53,6 +56,7 @@ class FeedGrepProcessor:
                 guid TEXT,
                 category TEXT,
                 source_name TEXT,
+                batch_id INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
@@ -63,6 +67,7 @@ class FeedGrepProcessor:
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_link ON feedgrep_items(link)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_category ON feedgrep_items(category)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_source_name ON feedgrep_items(source_name)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_batch_id ON feedgrep_items(batch_id)')
         
         # 为 is_item_exists 方法添加复合索引
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_source_title_link_guid ON feedgrep_items(source_name, title, link, guid)')
@@ -76,8 +81,35 @@ class FeedGrepProcessor:
         # 为来源和时间组合查询添加索引
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_source_name_created_at ON feedgrep_items(source_name, created_at DESC)')
         
+        # 不再创建新的batch_counter表，改用配置文件方式存储batch_id
+        
         conn.commit()
         conn.close()
+    
+    def get_next_batch_id(self) -> int:
+        """
+        获取下一个批处理ID，并将其加1
+        
+        Returns:
+            下一个批处理ID
+        """
+        # 使用feedgrep_items表中的最大batch_id作为当前batch_id，然后加1
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # 获取当前最大的batch_id
+            cursor.execute('SELECT COALESCE(MAX(batch_id), 0) FROM feedgrep_items')
+            max_batch_id = cursor.fetchone()[0]
+            
+            conn.close()
+            
+            # 下一个batch_id应该是最大值加1，最小为1
+            return max(1, max_batch_id + 1)
+            
+        except Exception as e:
+            log.error(f"Error getting next batch ID: {e}")
+            return 1
     
     def fetch_rss_feed(self, url: str) -> List[Dict]:
         """
@@ -179,8 +211,8 @@ class FeedGrepProcessor:
                 cursor = conn.cursor()
                 
                 cursor.execute('''
-                    INSERT INTO feedgrep_items (title, link, description, pub_date, guid, category, source_name)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO feedgrep_items (title, link, description, pub_date, guid, category, source_name, batch_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     item['title'],
                     item['link'],
@@ -188,7 +220,8 @@ class FeedGrepProcessor:
                     item['pub_date'],
                     item['guid'],
                     category,
-                    source_name
+                    source_name,
+                    self.current_batch_id
                 ))
                 
                 conn.commit()
@@ -261,7 +294,7 @@ class FeedGrepProcessor:
                     content += f"\n{i}. [{item['title']}]({item['link']})\n"
                     
                     # 限制总内容长度
-                    if len(content) > 1500:
+                    if len(content) > 20000:
                         content += f"\n... 还有更多内容（共{new_items_count}条）"
                         break
                         
@@ -270,6 +303,10 @@ class FeedGrepProcessor:
     def process_all_feeds(self):
         """处理所有配置的RSS源"""
         log.info("Starting to process all feeds...")
+        
+        # 生成新的批处理ID
+        self.current_batch_id = self.get_next_batch_id()
+        log.info(f"Starting batch processing with batch_id: {self.current_batch_id}")
         
         # 清空之前的新条目记录
         self.feed_new_items = {}
@@ -328,12 +365,12 @@ class FeedGrepProcessor:
                 
                 content = ""
 
-                for i, item in enumerate(matched_items[:10], 1):  # 限制最多10条
+                for i, item in enumerate(matched_items[:20], 1):  # 限制最多20条
                     # 添加序号、来源和超链接到内容
                     content += f"\n{i}. [{item['source_name']}] [{item['title']}]({item['link']})\n"
                     
-                if len(matched_items) > 10:
-                    content += f"\n... 还有 {len(matched_items) - 10} 条内容"
+                if len(matched_items) > 20:
+                    content += f"\n... 还有 {len(matched_items) - 20} 条内容"
                     
                 # 发送推送
                 self.push_manager.send_bulk_push(push_channels, title, content)
@@ -364,12 +401,9 @@ class FeedGrepProcessor:
                 else:
                     normal_keywords.append(part)
 
-            # 获取爬取频率作为时间范围
-            interval_minutes = self.config.get('interval_minutes', 30)
-
             # 构建查询语句
-            query_conditions = [f"created_at >= datetime('now', '-{interval_minutes} minutes')"]  # 只查找最近几次爬取周期内的新内容
-            params = []
+            query_conditions = ["batch_id = ?"]  # 只查找当前批次的新内容
+            params = [self.current_batch_id]
             
             # 处理普通关键词 (OR关系)
             if normal_keywords:

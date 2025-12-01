@@ -174,16 +174,16 @@ categories:
   #示例：苹果 华为 +手机 -水果 -价格 表示搜索包含"苹果"或"华为"，同时必须包含"手机"，但排除包含"水果"或"价格"的内容
 default_keywords:
   - keywords: AI 人工智能 +模型 -air -gai -mail
-  - keywords: 纳斯达克 标普 道琼斯
+  - keywords: 纳斯达克 标普 道琼斯 +指数
     push_channels:
       - webhook_feishu
       - webhook_weixin
       - qywx-bot-test
       - telegram-bot
-  - keywords: 恒生科技 恒生
+  - keywords: 恒生科技 +指数
   - keywords: ETF
   - keywords: 比特币 以太坊
-  - keywords: 黄金 白银
+  - keywords: 黄金 白银 -时代 -法则
   - keywords: qwen 千问 通义千问 阿里
   - keywords: 字节 bytedance 豆包
   - keywords: deepseek 梁文峰
@@ -193,7 +193,7 @@ default_keywords:
   - keywords: NVIDIA 英伟达 黄仁勋
   - keywords: 美国 日本 韩国
   - keywords: 中国 国产
-  - keywords: 月嫂 家政 保洁 保姆 家庭服务
+  - keywords: 月嫂 家政 保洁 保姆 -级
   - keywords: 花生油
 
 # 定时抓取RSS源的频率，单位：分钟

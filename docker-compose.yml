@@ -1,0 +1,12 @@
+services:
+  feedgrep:
+    build: .
+    container_name: feedgrep
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      # 核心：直接映射整个当前目录，改代码/配置后重启即可
+      - ./:/app
+    environment:
+      - TZ=Asia/Shanghai
